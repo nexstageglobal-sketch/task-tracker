@@ -317,9 +317,9 @@ let currentFilter = "all";
 
 function getType(s) { return s.startsWith("book/") ? "book" : s.startsWith("excel/") ? "excel" : "other"; }
 function getDisplayName(s) { return s.startsWith("book/") ? s.slice(5) : s.startsWith("excel/") ? "Excel " + s.slice(6) : s; }
-function getDateKey(d) { const dt = new Date(d); return `${dt.getFullYear()}-${dt.getMonth()+1}-${dt.getDate()}`; }
+function getDateKey(d) { const dt = new Date(d); return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}-${String(dt.getDate()).padStart(2,"0")}`; }
 function formatTime(d) { const dt = new Date(d); return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,"0")}`; }
-function todayKey() { const n = new Date(); return `${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`; }
+function todayKey() { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`; }
 function formatDateLabel(dateStr) {
   const d = new Date(dateStr);
   const days = ["日","月","火","水","木","金","土"];
