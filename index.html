@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<title>タスクトラッカー</title>
+<style>
+  :root {
+    --green: #1D9E75;
+    --amber: #BA7517;
+    --red: #A32D2D;
+    --blue: #185FA5;
+    --blue-bg: #E6F1FB;
+    --green-bg: #EAF3DE;
+    --green-text: #3B6D11;
+    --border: rgba(0,0,0,0.12);
+    --border-strong: rgba(0,0,0,0.22);
+    --bg: #f5f5f3;
+    --surface: #ffffff;
+    --surface2: #f0efec;
+    --text: #1a1a1a;
+    --text2: #6b6b68;
+    --text3: #9a9a97;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --border: rgba(255,255,255,0.12);
+      --border-strong: rgba(255,255,255,0.22);
+      --bg: #1a1a18;
+      --surface: #252523;
+      --surface2: #2e2e2b;
+      --text: #f0efec;
+      --text2: #a0a09d;
+      --text3: #6b6b68;
+      --blue-bg: #0c2240;
+      --green-bg: #112208;
+      --green-text: #5dc8a5;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+  .safe-top { padding-top: max(16px, env(safe-area-inset-top)); }
+
+  /* Header */
+  .app-header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 14px 16px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .app-header h1 { font-size: 17px; font-weight: 600; color: var(--text); }
+  .app-header p { font-size: 12px; color: var(--text2); margin-top: 1px; }
+
+  .content { padding: 12px 14px; max-width: 500px; margin: 0 auto; }
+
+  /* Today card */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 10px;
+    border: 0.5px solid var(--border);
+  }
+  .today-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .today-date { font-size: 19px; font-weight: 600; color: var(--text); }
+  .today-sub { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+  .rollover-btn {
+    padding: 7px 13px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border-strong);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--surface2);
+    color: var(--text);
+    transition: opacity .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .rollover-btn:active { opacity: .6; }
+  .rollover-btn:disabled { opacity: .35; cursor: default; }
+
+  /* Progress */
+  .prog-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .prog-track { height: 7px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .prog-fill { height: 100%; background: var(--green); border-radius: 4px; transition: width .5s ease; }
+  .prog-fill.amber { background: var(--amber); }
+  .prog-fill.red { background: var(--red); }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .metric { background: var(--surface); border-radius: var(--radius-sm); padding: 12px 10px; text-align: center; border: 0.5px solid var(--border); }
+  .metric-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .metric-val { font-size: 24px; font-weight: 600; color: var(--text); }
+  .metric-val.green { color: var(--green); }
+  .metric-val.amber { color: var(--amber); }
+  .metric-val.red { color: var(--red); }
+
+  /* Section heading */
+  .section-head { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .06em; text-transform: uppercase; margin: 14px 0 8px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-bottom: 10px; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border-strong);
+    font-size: 13px;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text2);
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all .15s;
+  }
+  .tab.active { background: var(--text); color: var(--surface); border-color: var(--text); }
+
+  /* Date group */
+  .date-group-label {
+    font-size: 11px; font-weight: 600; color: var(--text2);
+    padding: 10px 0 6px; letter-spacing: .04em;
+    border-bottom: 0.5px solid var(--border);
+    margin-bottom: 2px;
+  }
+
+  /* Task item */
+  .task-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 0;
+    border-bottom: 0.5px solid var(--border);
+    cursor: pointer;
+    transition: opacity .1s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .task-item:active { opacity: .6; }
+  .task-item:last-child { border-bottom: none; }
+
+  .check-wrap {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1.5px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all .2s;
+    background: transparent;
+  }
+  .task-item.done .check-wrap { background: var(--green); border-color: var(--green); }
+  .check-icon { display: none; }
+  .task-item.done .check-icon { display: block; }
+
+  .task-info { flex: 1; min-width: 0; }
+  .task-name {
+    font-size: 14px; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .task-item.done .task-name { color: var(--text3); text-decoration: line-through; }
+  .task-time { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+  .badge {
+    font-size: 11px; padding: 3px 9px; border-radius: 10px;
+    font-weight: 600; flex-shrink: 0;
+  }
+  .badge-book { background: var(--blue-bg); color: var(--blue); }
+  .badge-excel { background: var(--green-bg); color: var(--green-text); }
+
+  .empty { text-align: center; padding: 28px 16px; color: var(--text2); font-size: 13px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: var(--surface);
+    padding: 10px 20px; border-radius: 22px;
+    font-size: 13px; font-weight: 500;
+    opacity: 0; transition: all .3s; pointer-events: none;
+    white-space: nowrap; z-index: 100;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="safe-top"></div>
+
+<div class="app-header">
+  <h1>📋 タスクトラッカー</h1>
+  <p id="header-sub">2026年4月 · 読み込み中...</p>
+</div>
+
+<div class="content">
+
+  <!-- 今日のカード -->
+  <div class="card">
+    <div class="today-header">
+      <div>
+        <div class="today-date" id="today-date-label">-</div>
+        <div class="today-sub" id="today-sub-label">読み込み中...</div>
+      </div>
+      <button class="rollover-btn" id="rollover-btn" onclick="rolloverTasks()" disabled>...</button>
+    </div>
+    <div class="prog-label">
+      <span>今日の達成度</span>
+      <span id="today-pct">0%</span>
+    </div>
+    <div class="prog-track"><div class="prog-fill" id="today-bar" style="width:0%"></div></div>
+    <div style="margin-top:14px" id="today-tasks"></div>
+  </div>
+
+  <!-- 今月メトリクス -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-label">今月完了</div>
+      <div class="metric-val green" id="m-done">-</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">今月残り</div>
+      <div class="metric-val amber" id="m-remain">-</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">達成率</div>
+      <div class="metric-val" id="m-rate">-%</div>
+    </div>
+  </div>
+  <div class="prog-track" style="margin-bottom:14px">
+    <div class="prog-fill" id="month-bar" style="width:0%"></div>
+  </div>
+
+  <!-- 全タスク一覧 -->
+  <div class="section-head">すべてのタスク</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="card" style="padding: 0 16px;" id="all-tasks"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const TASKS = [
+  {id:"bkasn93m2kpe10nnoeeu9olhdc",summary:"book/入門 起業の科学 p.70〜80",start:"2026-04-01T16:30:00+09:00",end:"2026-04-01T17:30:00+09:00"},
+  {id:"k4p3vg6t3gr6ootlfe9kn42sc0",summary:"book/入門 起業の科学 p.92〜102",start:"2026-04-03T00:15:00+09:00",end:"2026-04-03T01:15:00+09:00"},
+  {id:"ge2peegiq56pdronrcr714679c",summary:"excel/1-09:25〜09:55",start:"2026-04-03T22:00:00+09:00",end:"2026-04-03T22:30:00+09:00"},
+  {id:"onccrfiks9a1qfk7aeeq2en4cs",summary:"excel/1-09:25〜09:55 ②",start:"2026-04-03T22:30:00+09:00",end:"2026-04-03T23:00:00+09:00"},
+  {id:"nh39jqc19ckckcmqgio3rkjjb8",summary:"excel/1-10:50〜11:20",start:"2026-04-03T23:00:00+09:00",end:"2026-04-03T23:30:00+09:00"},
+  {id:"ge0ejjqrhn0o6hreo2d0ueej40",summary:"book/入門 起業の科学 p.81〜91",start:"2026-04-03T23:30:00+09:00",end:"2026-04-04T00:30:00+09:00"},
+  {id:"c94do30u839fekcvtshh96v3s8",summary:"book/入門 起業の科学 p.103〜113",start:"2026-04-04T08:15:00+09:00",end:"2026-04-04T09:15:00+09:00"},
+  {id:"11n5sdhbbhbbqnnl9b3t3e5prc",summary:"excel/1-09:25〜09:55",start:"2026-04-04T09:25:00+09:00",end:"2026-04-04T09:55:00+09:00"},
+  {id:"4pchusn5tdrhtk5eikisjasgkk",summary:"book/入門 起業の科学 p.114〜124",start:"2026-04-05T08:15:00+09:00",end:"2026-04-05T09:15:00+09:00"},
+  {id:"ntbc73lr3cscj67pqviqkb3fcc",summary:"excel/1-09:25〜09:55",start:"2026-04-05T09:25:00+09:00",end:"2026-04-05T09:55:00+09:00"},
+  {id:"abuvgrs0bptqlmd3aqiqkrq87s",summary:"book/入門 起業の科学 p.125〜135",start:"2026-04-06T08:15:00+09:00",end:"2026-04-06T09:15:00+09:00"},
+  {id:"4mhhbcr6d9712ce7vsfg34c210",summary:"excel/1-09:25〜09:55",start:"2026-04-06T09:25:00+09:00",end:"2026-04-06T09:55:00+09:00"},
+  {id:"gkod1rdjvs823aqsci0bfnk30k",summary:"book/入門 起業の科学 p.146〜155",start:"2026-04-06T10:05:00+09:00",end:"2026-04-06T11:05:00+09:00"},
+  {id:"l26falva4olv3un6noq9q1isnc",summary:"excel/2-11:15〜11:45",start:"2026-04-06T11:15:00+09:00",end:"2026-04-06T11:45:00+09:00"},
+  {id:"jmt47u80s6pavkcuo68pd9i6c8",summary:"book/入門 起業の科学 p.136〜145",start:"2026-04-07T08:15:00+09:00",end:"2026-04-07T09:15:00+09:00"},
+  {id:"ch1p3gok5u2ohbnj67859nnv0o",summary:"excel/1-09:25〜09:55",start:"2026-04-07T09:25:00+09:00",end:"2026-04-07T09:55:00+09:00"},
+  {id:"vo09u6jdg7qkbd1f9i550fmf7g",summary:"book/入門 起業の科学 p.156〜165",start:"2026-04-09T12:10:00+09:00",end:"2026-04-09T13:10:00+09:00"},
+  {id:"vrlnm0il4rd2cjfr5l8o1j18c4",summary:"excel/1-13:20〜13:50",start:"2026-04-09T13:20:00+09:00",end:"2026-04-09T13:50:00+09:00"},
+  {id:"rq9s1d9h5rr4hpfevc2qt05h0o",summary:"book/入門 起業の科学 p.166〜175",start:"2026-04-10T08:15:00+09:00",end:"2026-04-10T09:15:00+09:00"},
+  {id:"m7aign3vej7ht0raa1gkubsvb8",summary:"excel/1-09:25〜09:55",start:"2026-04-10T09:25:00+09:00",end:"2026-04-10T09:55:00+09:00"},
+  {id:"ig9n36bkut11pmodtj1ps5e64g",summary:"book/入門 起業の科学 p.176〜185",start:"2026-04-11T08:15:00+09:00",end:"2026-04-11T09:15:00+09:00"},
+  {id:"vfi67hn21gbt34adm7579llaos",summary:"excel/1-09:25〜09:55",start:"2026-04-11T09:25:00+09:00",end:"2026-04-11T09:55:00+09:00"},
+  {id:"tj5aa001h59s7tdhg02tionoak",summary:"book/入門 起業の科学 p.186〜195",start:"2026-04-12T08:00:00+09:00",end:"2026-04-12T09:00:00+09:00"},
+  {id:"06ue55lb3q1qm2f90o6qnj8lv0",summary:"excel/1-09:25〜09:55",start:"2026-04-12T10:00:00+09:00",end:"2026-04-12T10:30:00+09:00"},
+  {id:"gp0mjla4cr87ph1tfmmu9hq11c",summary:"book/入門 起業の科学 p.196〜205",start:"2026-04-13T13:00:00+09:00",end:"2026-04-13T14:00:00+09:00"},
+  {id:"pa479fh95d6eb9fe5uskt1a3ds",summary:"excel/1-14:10〜14:40",start:"2026-04-13T14:10:00+09:00",end:"2026-04-13T14:40:00+09:00"},
+];
+
+const STORAGE_KEY = "task_done_v1";
+let doneMap = {};
+let currentFilter = "all";
+
+function getType(s) { return s.startsWith("book/") ? "book" : s.startsWith("excel/") ? "excel" : "other"; }
+function getDisplayName(s) { return s.startsWith("book/") ? s.slice(5) : s.startsWith("excel/") ? "Excel " + s.slice(6) : s; }
+function getDateKey(d) { const dt = new Date(d); return `${dt.getFullYear()}-${dt.getMonth()+1}-${dt.getDate()}`; }
+function formatTime(d) { const dt = new Date(d); return `${dt.getHours()}:${String(dt.getMinutes()).padStart(2,"0")}`; }
+function todayKey() { const n = new Date(); return `${n.getFullYear()}-${n.getMonth()+1}-${n.getDate()}`; }
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr);
+  const days = ["日","月","火","水","木","金","土"];
+  return `${d.getMonth()+1}月${d.getDate()}日（${days[d.getDay()]}）`;
+}
+function pad(n) { return String(n).padStart(2, "0"); }
+
+const enriched = TASKS.map(t => ({
+  ...t,
+  type: getType(t.summary),
+  name: getDisplayName(t.summary),
+  dateKey: getDateKey(t.start)
+}));
+
+function loadDone() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+  catch(e) { return {}; }
+}
+function saveDone() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(doneMap)); } catch(e) {}
+}
+
+function showToast(msg, dur = 2800) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), dur);
+}
+
+function makeTaskEl(task) {
+  const div = document.createElement("div");
+  div.className = "task-item" + (doneMap[task.id] ? " done" : "");
+  div.innerHTML = `
+    <div class="check-wrap">
+      <svg class="check-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3 7l3 3 5-5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="task-info">
+      <div class="task-name">${task.name}</div>
+      <div class="task-time">${formatTime(task.start)}</div>
+    </div>
+    <span class="badge ${task.type === "book" ? "badge-book" : "badge-excel"}">${task.type}</span>
+  `;
+  div.addEventListener("click", () => {
+    doneMap[task.id] ? delete doneMap[task.id] : (doneMap[task.id] = true);
+    saveDone();
+    render();
+  });
+  return div;
+}
+
+function renderTodayCard() {
+  const tk = todayKey();
+  const now = new Date();
+  const days = ["日","月","火","水","木","金","土"];
+  document.getElementById("today-date-label").textContent = `${now.getMonth()+1}月${now.getDate()}日（${days[now.getDay()]}）`;
+
+  const todayTasks = enriched.filter(t => t.dateKey === tk);
+  const doneToday = todayTasks.filter(t => doneMap[t.id]).length;
+  const total = todayTasks.length;
+  const pct = total === 0 ? 100 : Math.round(doneToday / total * 100);
+
+  document.getElementById("today-sub-label").textContent = total === 0 ? "今日のタスクなし" : `${doneToday} / ${total} 件完了`;
+  document.getElementById("today-pct").textContent = pct + "%";
+
+  const bar = document.getElementById("today-bar");
+  bar.style.width = pct + "%";
+  bar.className = "prog-fill" + (pct >= 80 ? "" : pct >= 50 ? " amber" : " red");
+
+  const listEl = document.getElementById("today-tasks");
+  listEl.innerHTML = "";
+  if (todayTasks.length === 0) {
+    listEl.innerHTML = '<div class="empty">今日のタスクはありません</div>';
+  } else {
+    todayTasks.forEach(t => listEl.appendChild(makeTaskEl(t)));
+  }
+
+  // 未完了振替ボタン
+  const pastUndone = enriched.filter(t => t.dateKey < tk && !doneMap[t.id]);
+  const btn = document.getElementById("rollover-btn");
+  if (pastUndone.length > 0) {
+    btn.disabled = false;
+    btn.textContent = `未完了 ${pastUndone.length}件を翌日へ ↗`;
+  } else {
+    btn.disabled = true;
+    btn.textContent = "振替なし";
+  }
+}
+
+function renderMonthMetrics() {
+  const done = enriched.filter(t => doneMap[t.id]).length;
+  const remain = enriched.length - done;
+  const rate = Math.round(done / enriched.length * 100);
+  document.getElementById("m-done").textContent = done;
+  document.getElementById("m-remain").textContent = remain;
+  const rateEl = document.getElementById("m-rate");
+  rateEl.textContent = rate + "%";
+  rateEl.className = "metric-val" + (rate >= 80 ? " green" : rate >= 50 ? " amber" : " red");
+  const mb = document.getElementById("month-bar");
+  mb.style.width = rate + "%";
+  mb.className = "prog-fill" + (rate >= 80 ? "" : rate >= 50 ? " amber" : " red");
+  document.getElementById("header-sub").textContent = `2026年4月 · 達成率 ${rate}%`;
+}
+
+function getFiltered() {
+  const tk = todayKey();
+  if (currentFilter === "today") return enriched.filter(t => t.dateKey === tk);
+  if (currentFilter === "undone") return enriched.filter(t => !doneMap[t.id]);
+  if (currentFilter === "done") return enriched.filter(t => doneMap[t.id]);
+  if (currentFilter === "book") return enriched.filter(t => t.type === "book");
+  if (currentFilter === "excel") return enriched.filter(t => t.type === "excel");
+  return enriched;
+}
+
+function renderTabs() {
+  const defs = [
+    {k:"all",l:"すべて"},
+    {k:"undone",l:"未完了"},
+    {k:"done",l:"達成済み"},
+    {k:"book",l:"📖 book"},
+    {k:"excel",l:"📊 excel"},
+  ];
+  const el = document.getElementById("tabs");
+  el.innerHTML = "";
+  defs.forEach(d => {
+    const btn = document.createElement("button");
+    btn.className = "tab" + (currentFilter === d.k ? " active" : "");
+    btn.textContent = d.l;
+    btn.onclick = () => { currentFilter = d.k; renderAllTasks(); renderTabs(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderAllTasks() {
+  const filtered = getFiltered();
+  const el = document.getElementById("all-tasks");
+  el.innerHTML = "";
+  if (!filtered.length) {
+    el.innerHTML = '<div class="empty">タスクがありません</div>';
+    return;
+  }
+  const groups = {};
+  filtered.forEach(t => { if (!groups[t.dateKey]) groups[t.dateKey] = []; groups[t.dateKey].push(t); });
+  Object.keys(groups).sort().forEach(dk => {
+    const label = document.createElement("div");
+    label.className = "date-group-label";
+    label.textContent = formatDateLabel(groups[dk][0].start);
+    el.appendChild(label);
+    groups[dk].forEach(t => el.appendChild(makeTaskEl(t)));
+  });
+}
+
+function render() {
+  renderTodayCard();
+  renderMonthMetrics();
+  renderTabs();
+  renderAllTasks();
+}
+
+async function rolloverTasks() {
+  const btn = document.getElementById("rollover-btn");
+  btn.disabled = true;
+  btn.textContent = "処理中...";
+
+  const tk = todayKey();
+  const pastUndone = enriched.filter(t => t.dateKey < tk && !doneMap[t.id]);
+  if (!pastUndone.length) { showToast("未完了タスクはありません"); render(); return; }
+
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const ymd = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth()+1)}-${pad(tomorrow.getDate())}`;
+
+  let ok = 0, ng = 0;
+  for (const t of pastUndone) {
+    const os = new Date(t.start), oe = new Date(t.end);
+    const dur = oe - os;
+    const ns = new Date(`${ymd}T${pad(os.getHours())}:${pad(os.getMinutes())}:00+09:00`);
+    const ne = new Date(ns.getTime() + dur);
+    const fmt = dt => `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:00+09:00`;
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          mcp_servers: [{ type: "url", url: "https://gcal.mcp.claude.com/mcp", name: "gcal" }],
+          messages: [{ role: "user", content: `Googleカレンダーにイベントを作成してください。タイトル: ${t.summary}（翌日振替）、開始: ${fmt(ns)}、終了: ${fmt(ne)}、calendarId: primary、sendUpdates: none` }]
+        })
+      });
+      if (res.ok) ok++; else ng++;
+    } catch(e) { ng++; }
+  }
+
+  showToast(ng === 0 ? `✓ ${ok}件をカレンダーに追加しました` : `${ok}件追加 / ${ng}件失敗`, 3500);
+  render();
+}
+
+// Init
+doneMap = loadDone();
+render();
+</script>
+</body>
+</html>
